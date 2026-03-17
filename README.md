@@ -1,11 +1,11 @@
-# AI Learning Agent (Client‑side)
+# AI Learning Agent (2-page React + Tailwind)
 
-ChatGPT-style UI with:
+Static GitHub Pages–friendly app (no Node build required) with:
 
-- Upload a file and ask questions using **only that file**
-- Mic button for **voice input** (browser speech recognition)
-- Text-to-speech with **voice selection**, **speed/pitch/volume**, **play/pause/resume/stop**
-- Works fully in the browser (no server)
+- **Landing page** (`index.html`)
+- **Chat page** (`chat.html`) — ChatGPT-style UI
+- **n8n webhook** backend integration (`POST { "query": "..." }`)
+- Optional file upload (PDF/DOCX/PPTX/TXT) to include document text in requests
 
 ## Run
 
@@ -24,11 +24,14 @@ Then open the printed URL (usually `http://127.0.0.1:5173/`).
 - `.docx` (via `mammoth`)
 - `.pptx` (via `jszip` + slide XML text extraction)
 
-## Notes
+## Backend (n8n)
 
-- “Answer from file” is retrieval-based (finds relevant passages and shows them).
-- “Summarize file” is extractive summarization (sentence scoring).
-- Voice input support depends on browser (Chrome/Edge recommended).
+On the chat page, click **Set webhook URL** (left sidebar) and paste your n8n webhook URL.
+
+Expected format:
+
+- Request: `{ "query": "user message" }`
+- Response: `{ "response": "AI answer" }`
 
 ## Share as a link (any device)
 
@@ -42,7 +45,7 @@ This is a static site. You can host it anywhere.
 
 ### Option B: GitHub Pages
 
-1. Create a GitHub repo and upload these files: `index.html`, `styles.css`, `app.js`, `serve.py`, `README.md`
+1. Create a GitHub repo and upload these files: `index.html`, `chat.html`, `landing.jsx`, `chat.jsx`, `shared.js`, `serve.py`, `README.md`, `.nojekyll`
 2. In GitHub: Settings → Pages → deploy from branch
 3. Share the Pages URL
 

@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI Learning Agent</title>
-    <meta name="description" content="AI learning assistant landing page" />
+    <title>AI Learning Agent — Chat</title>
+    <meta name="description" content="Chat interface" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -31,7 +31,13 @@
     <!-- Babel for JSX (no Node build required) -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
+    <!-- File parsers (optional) -->
+    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/pdf.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
     <script src="./shared.js"></script>
-    <script type="text/babel" src="./landing.jsx"></script>
+    <script type="text/babel" src="./chat.jsx"></script>
   </body>
 </html>
+
