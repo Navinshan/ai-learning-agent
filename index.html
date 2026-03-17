@@ -76,6 +76,12 @@
             <span class="emoji" aria-hidden="true">☰</span>
           </button>
 
+          <div class="modelPills" aria-label="Models">
+            <button class="pillBtn is-active" type="button" data-model="model-1">Model 1</button>
+            <button class="pillBtn" type="button" data-model="model-2">Model 2</button>
+            <button class="pillBtn" type="button" data-model="model-3">Model 3</button>
+          </div>
+
           <div class="topbar__titleWrap">
             <div class="topbar__title" id="activeChatTitle">New chat</div>
             <div class="topbar__subtitle" id="statusLine">Ready</div>
@@ -99,6 +105,7 @@
 
         <section class="chatPane" aria-label="Conversation">
           <div class="messages" id="chatLog" role="log" aria-live="polite"></div>
+          <div class="quickActions" id="quickActions" aria-label="Quick actions"></div>
           <div class="scrollFade" aria-hidden="true"></div>
         </section>
 
@@ -127,12 +134,7 @@
                     <span>Read aloud</span>
                   </label>
 
-                  <div class="ttsControls" aria-label="Text to speech controls">
-                    <button class="btn btn--ghost btn--sm" type="button" id="ttsPlayBtn">Play</button>
-                    <button class="btn btn--ghost btn--sm" type="button" id="ttsPauseBtn">Pause</button>
-                    <button class="btn btn--ghost btn--sm" type="button" id="ttsResumeBtn">Resume</button>
-                    <button class="btn btn--ghost btn--sm" type="button" id="ttsStopBtn">Stop</button>
-                  </div>
+                  <button class="btn btn--ghost btn--sm" type="button" id="ttsOneBtn">Listen</button>
                 </div>
                 <div class="composerBox__right" id="composerHint">Enter to send • Shift+Enter for newline</div>
               </div>
@@ -154,6 +156,21 @@
           />
         </footer>
       </main>
+
+      <aside class="sources" aria-label="Sources panel">
+        <div class="sources__inner">
+          <div class="sources__title">Links to Document / Sources</div>
+          <div class="sources__card">
+            <div class="sources__label">Document</div>
+            <div class="sources__value" id="sourceDocName">No file uploaded</div>
+          </div>
+
+          <div class="sources__card">
+            <div class="sources__label">Top excerpts used</div>
+            <div class="sources__list" id="sourcesList"></div>
+          </div>
+        </div>
+      </aside>
     </div>
 
     <div class="modal" id="settingsModal" aria-hidden="true" role="dialog" aria-label="Settings">

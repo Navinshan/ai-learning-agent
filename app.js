@@ -26,10 +26,10 @@ const els = {
   simpleToggle: document.getElementById("simpleToggle"),
   ttsToggle: document.getElementById("ttsToggle"),
   composerHint: document.getElementById("composerHint"),
-  ttsPlayBtn: document.getElementById("ttsPlayBtn"),
-  ttsPauseBtn: document.getElementById("ttsPauseBtn"),
-  ttsResumeBtn: document.getElementById("ttsResumeBtn"),
-  ttsStopBtn: document.getElementById("ttsStopBtn"),
+  ttsOneBtn: document.getElementById("ttsOneBtn"),
+  quickActions: document.getElementById("quickActions"),
+  sourcesList: document.getElementById("sourcesList"),
+  sourceDocName: document.getElementById("sourceDocName"),
 
   settingsModal: document.getElementById("settingsModal"),
   themeSelect: document.getElementById("themeSelect"),
@@ -384,8 +384,63 @@ function renderChat(){
 function renderAll(){
   renderSidebar();
   renderChat();
+  renderQuickActions();
+  renderSourcesPanel();
   applyTheme();
   requestAnimationFrame(scrollToBottom);
+}
+
+function renderSourcesPanel(){
+  const chat = getActiveChat();
+  if (els.sourceDocName){
+    els.sourceDocName.textContent = chat.doc?.name || "No file uploaded";
+  }
+  if (!els.sourcesList) return;
+  els.sourcesList.innerHTML = "";
+  if (!lastSources || lastSources.length === 0){
+    const empty = document.createElement("div");
+    empty.className = "sourceItem";
+    empty.textContent = chat.doc?.name ? "Ask a question to see excerpts here." : "Upload a file to see sources.";
+    els.sourcesList.appendChild(empty);
+    return;
+  }
+  for (const s of lastSources){
+    const div = document.createElement("div");
+    div.className = "sourceItem";
+    div.innerHTML = `
+      <div class="sourceItem__meta">
+        <span>Chunk ${s.chunkIndex}</span>
+        <span>${Number(s.score).toFixed(2)}</span>
+      </div>
+      <div>${escapeHtml(s.text)}</div>
+    `;
+    els.sourcesList.appendChild(div);
+  }
+}
+
+function renderQuickActions(){
+  if (!els.quickActions) return;
+  els.quickActions.innerHTML = "";
+  const chat = getActiveChat();
+  const can = !!chat.doc?.text;
+  const actions = [
+    { label: "Make response shorter", text: "Make it shorter." },
+    { label: "Explain it to me simply", text: "Explain simply." },
+    { label: "Tell me more", text: "Tell me more details." },
+    { label: "Summarize document", text: "Summarize the document." },
+  ];
+  for (const a of actions){
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "chip";
+    btn.textContent = a.label;
+    btn.disabled = !can;
+    btn.addEventListener("click", () => {
+      els.queryInput.value = a.text;
+      sendMessage();
+    });
+    els.quickActions.appendChild(btn);
+  }
 }
 
 // ---------- Theme / modal ----------
@@ -557,10 +612,12 @@ function getIndexForChat(chat){
 
 function answerFromDoc(chat, query){
   if (!chat.doc?.text){
+    lastSources = [];
     return "Upload a file first (TXT/DOCX/PDF/PPTX), then ask a question.";
   }
   const idx = getIndexForChat(chat);
   if (!idx || idx.chunks.length === 0){
+    lastSources = [];
     return "I couldn’t extract usable text from that file.";
   }
   const { vec: qv, norm: qn } = vectorizeQuery(query, idx.vocab, idx.idf);
@@ -569,14 +626,16 @@ function answerFromDoc(chat, query){
   const k = els.simpleToggle.checked ? 3 : 5;
   const hits = scored.slice(0, k).filter((x) => x.score > 0.03);
   if (hits.length === 0){
+    lastSources = [];
     return `I couldn’t find anything relevant in \`${chat.doc.name}\` for that question. Try rephrasing with keywords that appear in the document.`;
   }
   const excerptLen = els.simpleToggle.checked ? 260 : 520;
-  const bullets = hits.map((h) => {
+  lastSources = hits.map((h) => {
     const chunk = idx.chunks[h.i].trim().replace(/\s+/g, " ");
     const short = chunk.length > excerptLen ? `${chunk.slice(0, excerptLen)}…` : chunk;
-    return `- ${short}`;
-  }).join("\n");
+    return { chunkIndex: h.i + 1, score: h.score, text: short };
+  });
+  const bullets = lastSources.map((s) => `- ${s.text}`).join("\n");
   return `From \`${chat.doc.name}\`, the most relevant passages are:\n\n${bullets}\n\nAsk a follow‑up if you want me to focus on a specific section.`;
 }
 
@@ -650,6 +709,7 @@ async function sendMessage(){
 
 // ---------- Speech (voice input + TTS) ----------
 let lastSpokenText = "";
+let lastSources = [];
 
 function getVoicesSafe(){
   try{
@@ -891,16 +951,28 @@ function wireEvents(){
     populateVoiceSelect();
   });
 
-  // TTS transport controls (reads last assistant answer)
-  els.ttsPlayBtn.addEventListener("click", () => {
+  // Single TTS button: Play / Pause / Resume (reads last assistant answer)
+  els.ttsOneBtn.addEventListener("click", () => {
+    if (!("speechSynthesis" in window)) return;
+    const synth = window.speechSynthesis;
+    if (synth.speaking){
+      if (synth.paused){
+        synth.resume();
+        els.ttsOneBtn.textContent = "Pause";
+      } else {
+        synth.pause();
+        els.ttsOneBtn.textContent = "Resume";
+      }
+      return;
+    }
     const chat = getActiveChat();
     const last = [...chat.messages].reverse().find((m) => m.role === "assistant");
     const text = last?.content || lastSpokenText;
-    if (text) speak(text);
+    if (text){
+      speak(text);
+      els.ttsOneBtn.textContent = "Pause";
+    }
   });
-  els.ttsPauseBtn.addEventListener("click", pauseSpeak);
-  els.ttsResumeBtn.addEventListener("click", resumeSpeak);
-  els.ttsStopBtn.addEventListener("click", stopSpeak);
 
   els.attachBtn.addEventListener("click", () => els.fileInput.click());
   els.fileInput.addEventListener("change", async () => {
