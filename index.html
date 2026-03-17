@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Learning Agent</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@500;600&display=swap"
+      rel="stylesheet"
+    />
+    <!-- PDF parsing (client-side) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.6.82/pdf.min.js"></script>
+    <!-- DOCX parsing (client-side) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js"></script>
+    <!-- PPTX parsing helper (client-side) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar" id="sidebar" aria-label="Sidebar">
+        <div class="sidebar__top">
+          <div class="brand">
+            <div class="brand__title">AI Learning Agent</div>
+            <button class="icon-btn icon-btn--ghost" type="button" id="sidebarToggle" aria-label="Collapse sidebar">
+              <span class="emoji" aria-hidden="true">☰</span>
+            </button>
+          </div>
+
+          <button class="btn btn--primary" type="button" id="newChatBtn">
+            <span class="emoji" aria-hidden="true">＋</span>
+            <span>New chat</span>
+          </button>
+        </div>
+
+        <div class="sidebar__section">
+          <div class="sidebar__sectionTitle">Chats</div>
+          <div class="chatList" id="chatList" role="list"></div>
+        </div>
+
+        <div class="sidebar__footer">
+          <button class="btn btn--ghost" type="button" id="exportBtn">
+            <span class="emoji" aria-hidden="true">⤓</span>
+            <span>Export</span>
+          </button>
+          <button class="btn btn--ghost btn--danger" type="button" id="clearAllBtn">
+            <span class="emoji" aria-hidden="true">🗑</span>
+            <span>Clear</span>
+          </button>
+        </div>
+      </aside>
+
+      <main class="main" aria-label="Main">
+        <header class="topbar" aria-label="Top bar">
+          <button class="icon-btn icon-btn--ghost topbar__toggle" type="button" id="sidebarToggleTop" aria-label="Toggle sidebar">
+            <span class="emoji" aria-hidden="true">☰</span>
+          </button>
+
+          <div class="topbar__titleWrap">
+            <div class="topbar__title" id="activeChatTitle">New chat</div>
+            <div class="topbar__subtitle" id="statusLine">Ready</div>
+          </div>
+
+          <div class="topbar__actions">
+            <button class="btn btn--ghost" type="button" id="shareBtn">
+              <span class="emoji" aria-hidden="true">🔗</span>
+              <span>Share</span>
+            </button>
+            <button class="btn btn--ghost" type="button" id="clearChatBtn">
+              <span class="emoji" aria-hidden="true">🧹</span>
+              <span>Clear chat</span>
+            </button>
+            <button class="btn btn--ghost" type="button" id="settingsBtn">
+              <span class="emoji" aria-hidden="true">⚙️</span>
+              <span>Settings</span>
+            </button>
+          </div>
+        </header>
+
+        <section class="chatPane" aria-label="Conversation">
+          <div class="messages" id="chatLog" role="log" aria-live="polite"></div>
+          <div class="scrollFade" aria-hidden="true"></div>
+        </section>
+
+        <footer class="composerBar" aria-label="Message composer">
+          <div class="composerBar__inner">
+            <button class="icon-btn icon-btn--ghost" type="button" id="attachBtn" aria-label="Attach file">
+              <span class="emoji" aria-hidden="true">＋</span>
+            </button>
+
+            <div class="composerBox">
+              <textarea
+                id="queryInput"
+                class="composerBox__input"
+                placeholder="Message AI Learning Agent…"
+                rows="1"
+              ></textarea>
+
+              <div class="composerBox__meta">
+                <div class="composerBox__left">
+                  <label class="toggle">
+                    <input type="checkbox" id="simpleToggle" />
+                    <span>Explain simply</span>
+                  </label>
+                  <label class="toggle">
+                    <input type="checkbox" id="ttsToggle" />
+                    <span>Read aloud</span>
+                  </label>
+
+                  <div class="ttsControls" aria-label="Text to speech controls">
+                    <button class="btn btn--ghost btn--sm" type="button" id="ttsPlayBtn">Play</button>
+                    <button class="btn btn--ghost btn--sm" type="button" id="ttsPauseBtn">Pause</button>
+                    <button class="btn btn--ghost btn--sm" type="button" id="ttsResumeBtn">Resume</button>
+                    <button class="btn btn--ghost btn--sm" type="button" id="ttsStopBtn">Stop</button>
+                  </div>
+                </div>
+                <div class="composerBox__right" id="composerHint">Enter to send • Shift+Enter for newline</div>
+              </div>
+            </div>
+
+            <button class="icon-btn icon-btn--mic" type="button" id="micBtn" aria-label="Voice input">
+              <span class="emoji" aria-hidden="true">🎙️</span>
+            </button>
+            <button class="icon-btn icon-btn--send" type="button" id="sendBtn" aria-label="Send">
+              <span class="emoji" aria-hidden="true">▶</span>
+            </button>
+          </div>
+
+          <input
+            id="fileInput"
+            type="file"
+            class="fileInput"
+            accept="*/*"
+          />
+        </footer>
+      </main>
+    </div>
+
+    <div class="modal" id="settingsModal" aria-hidden="true" role="dialog" aria-label="Settings">
+      <div class="modal__backdrop" data-close="true"></div>
+      <div class="modal__panel" role="document">
+        <div class="modal__header">
+          <div class="modal__title">Settings</div>
+          <button class="icon-btn icon-btn--ghost" type="button" data-close="true" aria-label="Close">
+            <span class="emoji" aria-hidden="true">✕</span>
+          </button>
+        </div>
+
+        <div class="modal__body">
+          <label class="field">
+            <div class="field__label">Theme</div>
+            <select class="field__input" id="themeSelect">
+              <option value="dark" selected>Dark</option>
+              <option value="light">Light</option>
+            </select>
+          </label>
+
+          <div class="field">
+            <div class="field__label">Voice</div>
+            <div class="grid2">
+              <label class="field">
+                <div class="field__label">Preference (best‑effort)</div>
+                <select class="field__input" id="voiceGenderSelect">
+                  <option value="any" selected>Any</option>
+                  <option value="female">Female</option>
+                  <option value="male">Male</option>
+                </select>
+                <div class="field__hint">Browsers don’t reliably expose gender; this is a name-based guess.</div>
+              </label>
+              <label class="field">
+                <div class="field__label">Voice type</div>
+                <select class="field__input" id="voiceSelect"></select>
+                <div class="field__hint">Voice list depends on device/browser.</div>
+              </label>
+            </div>
+          </div>
+
+          <div class="field">
+            <div class="field__label">Speech controls</div>
+            <div class="grid3">
+              <label class="field">
+                <div class="field__label">Speed</div>
+                <input class="field__input" id="rateInput" type="range" min="0.6" max="1.6" step="0.05" value="1" />
+                <div class="field__hint"><span id="rateValue">1.00</span>x</div>
+              </label>
+              <label class="field">
+                <div class="field__label">Pitch</div>
+                <input class="field__input" id="pitchInput" type="range" min="0.6" max="1.6" step="0.05" value="1" />
+                <div class="field__hint"><span id="pitchValue">1.00</span></div>
+              </label>
+              <label class="field">
+                <div class="field__label">Volume</div>
+                <input class="field__input" id="volumeInput" type="range" min="0" max="1" step="0.05" value="1" />
+                <div class="field__hint"><span id="volumeValue">1.00</span></div>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal__footer">
+          <button class="btn btn--primary" type="button" id="saveSettingsBtn">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
