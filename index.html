@@ -37,33 +37,31 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   </head>
   <body>
-    <div class="app">
+    <div class="shell">
       <aside class="sidebar" id="sidebar" aria-label="Sidebar">
-        <div class="sidebar__top">
-          <div class="brand">
-            <div class="brand__title">AI Learning Agent</div>
-            <button class="icon-btn icon-btn--ghost" type="button" id="sidebarToggle" aria-label="Collapse sidebar">
-              <span class="emoji" aria-hidden="true">☰</span>
-            </button>
-          </div>
-
-          <button class="btn btn--primary" type="button" id="newChatBtn">
-            <span class="emoji" aria-hidden="true">＋</span>
-            <span>New chat</span>
+        <div class="sidebar__brand">
+          <div class="brand__title">AIVA CHATBOT</div>
+          <button class="icon-btn icon-btn--ghost" type="button" id="sidebarToggle" aria-label="Collapse sidebar">
+            <span class="emoji" aria-hidden="true">☰</span>
           </button>
         </div>
 
+        <button class="btn btn--primary btn--wide" type="button" id="newChatBtn">
+          <span class="emoji" aria-hidden="true">＋</span>
+          <span>New Chat</span>
+        </button>
+
         <div class="sidebar__section">
-          <div class="sidebar__sectionTitle">Chats</div>
+          <div class="sidebar__sectionTitle">History</div>
           <div class="chatList" id="chatList" role="list"></div>
         </div>
 
         <div class="sidebar__footer">
-          <button class="btn btn--ghost" type="button" id="exportBtn">
+          <button class="btn btn--ghost btn--wide" type="button" id="exportBtn">
             <span class="emoji" aria-hidden="true">⤓</span>
             <span>Export</span>
           </button>
-          <button class="btn btn--ghost btn--danger" type="button" id="clearAllBtn">
+          <button class="btn btn--ghost btn--danger btn--wide" type="button" id="clearAllBtn">
             <span class="emoji" aria-hidden="true">🗑</span>
             <span>Clear</span>
           </button>
@@ -76,26 +74,14 @@
             <span class="emoji" aria-hidden="true">☰</span>
           </button>
 
-          <div class="modelPills" aria-label="Models">
-            <button class="pillBtn is-active" type="button" data-model="model-1">Model 1</button>
-            <button class="pillBtn" type="button" data-model="model-2">Model 2</button>
-            <button class="pillBtn" type="button" data-model="model-3">Model 3</button>
+          <div class="modelPills" role="tablist" aria-label="Model">
+            <button class="pillBtn is-active" type="button" data-model="model1">Model 1</button>
+            <button class="pillBtn" type="button" data-model="model2">Model 2</button>
+            <button class="pillBtn" type="button" data-model="model3">Model 3</button>
           </div>
 
-          <div class="topbar__titleWrap">
-            <div class="topbar__title" id="activeChatTitle">New chat</div>
-            <div class="topbar__subtitle" id="statusLine">Ready</div>
-          </div>
-
-          <div class="topbar__actions">
-            <button class="btn btn--ghost" type="button" id="shareBtn">
-              <span class="emoji" aria-hidden="true">🔗</span>
-              <span>Share</span>
-            </button>
-            <button class="btn btn--ghost" type="button" id="clearChatBtn">
-              <span class="emoji" aria-hidden="true">🧹</span>
-              <span>Clear chat</span>
-            </button>
+          <div class="topbar__right">
+            <div class="statusPill" id="statusLine">Ready</div>
             <button class="btn btn--ghost" type="button" id="settingsBtn">
               <span class="emoji" aria-hidden="true">⚙️</span>
               <span>Settings</span>
@@ -103,74 +89,78 @@
           </div>
         </header>
 
-        <section class="chatPane" aria-label="Conversation">
-          <div class="messages" id="chatLog" role="log" aria-live="polite"></div>
-          <div class="quickActions" id="quickActions" aria-label="Quick actions"></div>
-          <div class="scrollFade" aria-hidden="true"></div>
-        </section>
-
-        <footer class="composerBar" aria-label="Message composer">
-          <div class="composerBar__inner">
-            <button class="icon-btn icon-btn--ghost" type="button" id="attachBtn" aria-label="Attach file">
-              <span class="emoji" aria-hidden="true">＋</span>
-            </button>
-
-            <div class="composerBox">
-              <textarea
-                id="queryInput"
-                class="composerBox__input"
-                placeholder="Message AI Learning Agent…"
-                rows="1"
-              ></textarea>
-
-              <div class="composerBox__meta">
-                <div class="composerBox__left">
-                  <label class="toggle">
-                    <input type="checkbox" id="simpleToggle" />
-                    <span>Explain simply</span>
-                  </label>
-                  <label class="toggle">
-                    <input type="checkbox" id="ttsToggle" />
-                    <span>Read aloud</span>
-                  </label>
-
-                  <button class="btn btn--ghost btn--sm" type="button" id="ttsOneBtn">Listen</button>
-                </div>
-                <div class="composerBox__right" id="composerHint">Enter to send • Shift+Enter for newline</div>
-              </div>
+        <section class="content" aria-label="Content">
+          <section class="center" aria-label="Chat">
+            <div class="queryBanner">
+              <div class="queryBanner__title" id="activeChatTitle">New chat</div>
+              <button class="icon-btn icon-btn--ghost" type="button" id="clearChatBtn" aria-label="Clear chat">
+                <span class="emoji" aria-hidden="true">🧹</span>
+              </button>
             </div>
 
-            <button class="icon-btn icon-btn--mic" type="button" id="micBtn" aria-label="Voice input">
-              <span class="emoji" aria-hidden="true">🎙️</span>
-            </button>
-            <button class="icon-btn icon-btn--send" type="button" id="sendBtn" aria-label="Send">
-              <span class="emoji" aria-hidden="true">▶</span>
-            </button>
-          </div>
+            <div class="chatCard" aria-label="Conversation">
+              <div class="messages" id="chatLog" role="log" aria-live="polite"></div>
+              <div class="scrollFade" aria-hidden="true"></div>
+            </div>
 
-          <input
-            id="fileInput"
-            type="file"
-            class="fileInput"
-            accept="*/*"
-          />
-        </footer>
+            <div class="chipsRow" aria-label="Quick actions">
+              <button class="chip" type="button" data-chip="shorter">Make response shorter</button>
+              <button class="chip" type="button" data-chip="simple">Explain it like I'm 5</button>
+              <button class="chip" type="button" data-chip="more">Tell me more</button>
+            </div>
+
+            <footer class="composerBar" aria-label="Message composer">
+              <div class="composerBar__inner">
+                <button class="icon-btn icon-btn--ghost" type="button" id="attachBtn" aria-label="Attach file">
+                  <span class="emoji" aria-hidden="true">＋</span>
+                </button>
+
+                <div class="composerBox">
+                  <textarea
+                    id="queryInput"
+                    class="composerBox__input"
+                    placeholder="Message AIVA…"
+                    rows="1"
+                  ></textarea>
+
+                  <div class="composerBox__meta">
+                    <div class="composerBox__left">
+                      <label class="toggle">
+                        <input type="checkbox" id="simpleToggle" />
+                        <span>Explain simply</span>
+                      </label>
+                    </div>
+                    <div class="composerBox__right" id="composerHint">Upload a file • Enter to send • Shift+Enter for newline</div>
+                  </div>
+                </div>
+
+                <button class="icon-btn icon-btn--mic" type="button" id="micBtn" aria-label="Voice input">
+                  <span class="emoji" aria-hidden="true">🎙️</span>
+                </button>
+                <button class="icon-btn icon-btn--send" type="button" id="sendBtn" aria-label="Send">
+                  <span class="emoji" aria-hidden="true">▶</span>
+                </button>
+              </div>
+
+              <input id="fileInput" type="file" class="fileInput" accept="*/*" />
+            </footer>
+          </section>
+
+          <aside class="rightPane" aria-label="Sources">
+            <div class="rightPane__title">Links to Document and Website for this Response</div>
+            <div class="rightPane__body" id="sourcesPanel">
+              <div class="linkItem">
+                <div class="linkItem__label">Link to uploaded file</div>
+                <div class="linkItem__value" id="sourceFileName">—</div>
+              </div>
+              <div class="linkItem">
+                <div class="linkItem__label">Top matched chunks</div>
+                <div class="linkItem__value" id="sourceChunks">—</div>
+              </div>
+            </div>
+          </aside>
+        </section>
       </main>
-
-      <aside class="sources" aria-label="Sources panel">
-        <div class="sources__inner">
-          <div class="sources__title">Links to Document / Sources</div>
-          <div class="sources__card">
-            <div class="sources__label">Document</div>
-            <div class="sources__value" id="sourceDocName">No file uploaded</div>
-          </div>
-
-          <div class="sources__card">
-            <div class="sources__label">Top excerpts used</div>
-            <div class="sources__list" id="sourcesList"></div>
-          </div>
-        </div>
-      </aside>
     </div>
 
     <div class="modal" id="settingsModal" aria-hidden="true" role="dialog" aria-label="Settings">

@@ -12,7 +12,6 @@ const els = {
 
   activeChatTitle: document.getElementById("activeChatTitle"),
   statusLine: document.getElementById("statusLine"),
-  shareBtn: document.getElementById("shareBtn"),
   clearChatBtn: document.getElementById("clearChatBtn"),
   settingsBtn: document.getElementById("settingsBtn"),
 
@@ -24,12 +23,8 @@ const els = {
   attachBtn: document.getElementById("attachBtn"),
   fileInput: document.getElementById("fileInput"),
   simpleToggle: document.getElementById("simpleToggle"),
-  ttsToggle: document.getElementById("ttsToggle"),
   composerHint: document.getElementById("composerHint"),
-  ttsOneBtn: document.getElementById("ttsOneBtn"),
-  quickActions: document.getElementById("quickActions"),
-  sourcesList: document.getElementById("sourcesList"),
-  sourceDocName: document.getElementById("sourceDocName"),
+  chipsRow: document.querySelector(".chipsRow"),
 
   settingsModal: document.getElementById("settingsModal"),
   themeSelect: document.getElementById("themeSelect"),
@@ -42,6 +37,9 @@ const els = {
   rateValue: document.getElementById("rateValue"),
   pitchValue: document.getElementById("pitchValue"),
   volumeValue: document.getElementById("volumeValue"),
+
+  sourceFileName: document.getElementById("sourceFileName"),
+  sourceChunks: document.getElementById("sourceChunks"),
 };
 
 // ---------- Storage ----------
@@ -162,8 +160,14 @@ function messageBubble(role, content, metaRightHtml = ""){
 
   bubble.appendChild(meta);
   bubble.appendChild(body);
+
+  // Placeholder footer; AI answers can append controls here.
+  const footer = document.createElement("div");
+  footer.className = "bubble__footer";
+  bubble.appendChild(footer);
+
   row.appendChild(bubble);
-  return { row, bubble, body };
+  return { row, bubble, body, footer };
 }
 
 function scrollToBottom(){
@@ -355,6 +359,7 @@ function renderChat(){
   const chat = getActiveChat();
   els.activeChatTitle.textContent = chat.title || "New chat";
   els.chatLog.innerHTML = "";
+  updateSourcesPanel(chat, []);
 
   if (chat.messages.length === 0){
     const docLine = chat.doc?.name ? `\n\nCurrent file: ${chat.doc.name}` : "";
@@ -376,7 +381,31 @@ function renderChat(){
              </button>
            </span>`
         : "";
-    const { row } = messageBubble(m.role, m.content, metaRight);
+    const { row, footer } = messageBubble(m.role, m.content, metaRight);
+    if (m.role === "assistant"){
+      // Single-button read control (voice + speed + play/pause/resume inside).
+      const ctl = document.createElement("div");
+      ctl.className = "readCtl";
+      ctl.innerHTML = `
+        <button class="readCtl__btn" type="button" data-read="${escapeHtml(m.id)}">🔊 Read</button>
+        <button class="readCtl__more" type="button" data-readmore="${escapeHtml(m.id)}">⚙️</button>
+      `;
+      footer.appendChild(ctl);
+
+      const panel = document.createElement("div");
+      panel.className = "readCtlPanel";
+      panel.style.display = "none";
+      panel.innerHTML = `
+        <div class="readCtlRow">
+          <label>Voice</label>
+          <select data-voice="${escapeHtml(m.id)}"></select>
+          <label>Speed</label>
+          <input data-rate="${escapeHtml(m.id)}" type="range" min="0.6" max="1.6" step="0.05" value="${Number(settings.rate ?? 1)}" />
+          <span data-ratev="${escapeHtml(m.id)}">${Number(settings.rate ?? 1).toFixed(2)}x</span>
+        </div>
+      `;
+      footer.appendChild(panel);
+    }
     els.chatLog.appendChild(row);
   }
 }
@@ -384,63 +413,8 @@ function renderChat(){
 function renderAll(){
   renderSidebar();
   renderChat();
-  renderQuickActions();
-  renderSourcesPanel();
   applyTheme();
   requestAnimationFrame(scrollToBottom);
-}
-
-function renderSourcesPanel(){
-  const chat = getActiveChat();
-  if (els.sourceDocName){
-    els.sourceDocName.textContent = chat.doc?.name || "No file uploaded";
-  }
-  if (!els.sourcesList) return;
-  els.sourcesList.innerHTML = "";
-  if (!lastSources || lastSources.length === 0){
-    const empty = document.createElement("div");
-    empty.className = "sourceItem";
-    empty.textContent = chat.doc?.name ? "Ask a question to see excerpts here." : "Upload a file to see sources.";
-    els.sourcesList.appendChild(empty);
-    return;
-  }
-  for (const s of lastSources){
-    const div = document.createElement("div");
-    div.className = "sourceItem";
-    div.innerHTML = `
-      <div class="sourceItem__meta">
-        <span>Chunk ${s.chunkIndex}</span>
-        <span>${Number(s.score).toFixed(2)}</span>
-      </div>
-      <div>${escapeHtml(s.text)}</div>
-    `;
-    els.sourcesList.appendChild(div);
-  }
-}
-
-function renderQuickActions(){
-  if (!els.quickActions) return;
-  els.quickActions.innerHTML = "";
-  const chat = getActiveChat();
-  const can = !!chat.doc?.text;
-  const actions = [
-    { label: "Make response shorter", text: "Make it shorter." },
-    { label: "Explain it to me simply", text: "Explain simply." },
-    { label: "Tell me more", text: "Tell me more details." },
-    { label: "Summarize document", text: "Summarize the document." },
-  ];
-  for (const a of actions){
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "chip";
-    btn.textContent = a.label;
-    btn.disabled = !can;
-    btn.addEventListener("click", () => {
-      els.queryInput.value = a.text;
-      sendMessage();
-    });
-    els.quickActions.appendChild(btn);
-  }
 }
 
 // ---------- Theme / modal ----------
@@ -610,15 +584,13 @@ function getIndexForChat(chat){
   return idx;
 }
 
-function answerFromDoc(chat, query){
+function answerFromDocWithSources(chat, query){
   if (!chat.doc?.text){
-    lastSources = [];
-    return "Upload a file first (TXT/DOCX/PDF/PPTX), then ask a question.";
+    return { answer: "Upload a file first (TXT/DOCX/PDF/PPTX), then ask a question.", sources: [] };
   }
   const idx = getIndexForChat(chat);
   if (!idx || idx.chunks.length === 0){
-    lastSources = [];
-    return "I couldn’t extract usable text from that file.";
+    return { answer: "I couldn’t extract usable text from that file.", sources: [] };
   }
   const { vec: qv, norm: qn } = vectorizeQuery(query, idx.vocab, idx.idf);
   const scored = idx.tfidf.map((dv, i) => ({ i, score: cosineSim(qv, qn, dv, idx.norms[i]) }));
@@ -626,17 +598,22 @@ function answerFromDoc(chat, query){
   const k = els.simpleToggle.checked ? 3 : 5;
   const hits = scored.slice(0, k).filter((x) => x.score > 0.03);
   if (hits.length === 0){
-    lastSources = [];
-    return `I couldn’t find anything relevant in \`${chat.doc.name}\` for that question. Try rephrasing with keywords that appear in the document.`;
+    return {
+      answer: `I couldn’t find anything relevant in \`${chat.doc.name}\` for that question. Try rephrasing with keywords that appear in the document.`,
+      sources: [],
+    };
   }
   const excerptLen = els.simpleToggle.checked ? 260 : 520;
-  lastSources = hits.map((h) => {
+  const bullets = hits.map((h) => {
     const chunk = idx.chunks[h.i].trim().replace(/\s+/g, " ");
     const short = chunk.length > excerptLen ? `${chunk.slice(0, excerptLen)}…` : chunk;
-    return { chunkIndex: h.i + 1, score: h.score, text: short };
-  });
-  const bullets = lastSources.map((s) => `- ${s.text}`).join("\n");
-  return `From \`${chat.doc.name}\`, the most relevant passages are:\n\n${bullets}\n\nAsk a follow‑up if you want me to focus on a specific section.`;
+    return `- ${short}`;
+  }).join("\n");
+  const sources = hits.map((h) => ({ chunkIndex: h.i, score: h.score }));
+  return {
+    answer: `From \`${chat.doc.name}\`, the most relevant passages are:\n\n${bullets}\n\nAsk a follow‑up if you want me to focus on a specific section.`,
+    sources,
+  };
 }
 
 function maybeSummarize(chat, query){
@@ -646,6 +623,18 @@ function maybeSummarize(chat, query){
     return summarizeText(chat.doc.text, els.simpleToggle.checked ? 5 : 8);
   }
   return null;
+}
+
+function updateSourcesPanel(chat, sources){
+  if (els.sourceFileName) els.sourceFileName.textContent = chat.doc?.name || "—";
+  if (!els.sourceChunks) return;
+  if (!sources || sources.length === 0){
+    els.sourceChunks.textContent = "—";
+    return;
+  }
+  els.sourceChunks.textContent = sources
+    .map((s) => `chunk ${s.chunkIndex + 1} (${s.score.toFixed(2)})`)
+    .join(" · ");
 }
 
 // ---------- Sending / input ----------
@@ -688,11 +677,9 @@ async function sendMessage(){
 
   try{
     const summary = maybeSummarize(chat, query);
-    const answer = summary ?? answerFromDoc(chat, query);
-    thinking.content = normalizeText(answer) || "(empty response)";
-    if (els.ttsToggle.checked){
-      speak(thinking.content);
-    }
+    const out = summary ? { answer: summary, sources: [] } : answerFromDocWithSources(chat, query);
+    thinking.content = normalizeText(out.answer) || "(empty response)";
+    updateSourcesPanel(chat, out.sources);
     setStatus("Ready");
   } catch (err){
     thinking.content = `Error: ${err?.message || err}`;
@@ -709,7 +696,6 @@ async function sendMessage(){
 
 // ---------- Speech (voice input + TTS) ----------
 let lastSpokenText = "";
-let lastSources = [];
 
 function getVoicesSafe(){
   try{
@@ -768,6 +754,15 @@ function stopSpeak(){
   window.speechSynthesis.cancel();
 }
 
+function isSpeaking(){
+  if (!("speechSynthesis" in window)) return false;
+  return window.speechSynthesis.speaking;
+}
+function isPaused(){
+  if (!("speechSynthesis" in window)) return false;
+  return window.speechSynthesis.paused;
+}
+
 function syncVoiceValueLabels(){
   if (els.rateValue) els.rateValue.textContent = Number(els.rateInput.value).toFixed(2);
   if (els.pitchValue) els.pitchValue.textContent = Number(els.pitchInput.value).toFixed(2);
@@ -807,6 +802,28 @@ function populateVoiceSelect(){
     }
   }
   sel.value = settings.voiceUri || pickVoice()?.voiceURI || sel.options[0]?.value || "";
+}
+
+function populateVoiceSelectElement(selectEl){
+  const voices = getVoicesSafe();
+  selectEl.innerHTML = "";
+  if (voices.length === 0){
+    const opt = document.createElement("option");
+    opt.value = "";
+    opt.textContent = "No voices available";
+    selectEl.appendChild(opt);
+    selectEl.disabled = true;
+    return;
+  }
+  selectEl.disabled = false;
+  const sorted = [...voices].sort((a, b) => (a.lang || "").localeCompare(b.lang || "") || (a.name || "").localeCompare(b.name || ""));
+  for (const v of sorted){
+    const opt = document.createElement("option");
+    opt.value = v.voiceURI;
+    opt.textContent = `${v.name} (${v.lang})${v.default ? " • default" : ""}`;
+    selectEl.appendChild(opt);
+  }
+  selectEl.value = settings.voiceUri || pickVoice()?.voiceURI || selectEl.options[0]?.value || "";
 }
 
 function wireSpeechRecognition(){
@@ -891,33 +908,76 @@ function wireEvents(){
     URL.revokeObjectURL(a.href);
   });
 
-  els.shareBtn.addEventListener("click", async () => {
-    const chat = getActiveChat();
-    const payload = { title: chat.title, messages: chat.messages };
-    try{
-      await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
-      setStatus("Copied chat JSON to clipboard");
-      setTimeout(() => setStatus("Ready"), 1200);
-    } catch {
-      setStatus("Copy failed");
-    }
-  });
+  // Share button removed in this template; keep export for sharing.
 
   // Copy assistant message content
   els.chatLog.addEventListener("click", async (e) => {
     const t = /** @type {HTMLElement} */ (e.target);
-    const btn = t.closest?.("[data-copy]");
-    if (!btn) return;
-    const id = btn.getAttribute("data-copy") || "";
-    const chat = getActiveChat();
-    const msg = chat.messages.find((m) => m.id === id);
-    if (!msg) return;
-    try{
-      await navigator.clipboard.writeText(msg.content);
-      setStatus("Copied");
-      setTimeout(() => setStatus("Ready"), 900);
-    } catch {
-      setStatus("Copy failed");
+    const copyBtn = t.closest?.("[data-copy]");
+    if (copyBtn){
+      const id = copyBtn.getAttribute("data-copy") || "";
+      const chat = getActiveChat();
+      const msg = chat.messages.find((m) => m.id === id);
+      if (!msg) return;
+      try{
+        await navigator.clipboard.writeText(msg.content);
+        setStatus("Copied");
+        setTimeout(() => setStatus("Ready"), 900);
+      } catch {
+        setStatus("Copy failed");
+      }
+      return;
+    }
+
+    const readBtn = t.closest?.("[data-read]");
+    if (readBtn){
+      const id = readBtn.getAttribute("data-read") || "";
+      const chat = getActiveChat();
+      const msg = chat.messages.find((m) => m.id === id);
+      if (!msg) return;
+      // Single button toggles play/pause/resume for this message.
+      if (isSpeaking() && !isPaused()){
+        pauseSpeak();
+        return;
+      }
+      if (isPaused()){
+        resumeSpeak();
+        return;
+      }
+      speak(msg.content);
+      return;
+    }
+
+    const moreBtn = t.closest?.("[data-readmore]");
+    if (moreBtn){
+      const id = moreBtn.getAttribute("data-readmore") || "";
+      const panel = els.chatLog.querySelector(`.readCtlPanel select[data-voice="${CSS.escape(id)}"]`)?.closest(".readCtlPanel");
+      if (!panel) return;
+      panel.style.display = panel.style.display === "none" ? "block" : "none";
+      const selectEl = panel.querySelector(`select[data-voice="${CSS.escape(id)}"]`);
+      if (selectEl) populateVoiceSelectElement(selectEl);
+      return;
+    }
+  });
+
+  // Voice/rate changes inside per-message panel
+  els.chatLog.addEventListener("input", (e) => {
+    const t = /** @type {HTMLElement} */ (e.target);
+    const rate = t.closest?.("[data-rate]");
+    if (rate && rate instanceof HTMLInputElement){
+      settings.rate = Number(rate.value);
+      const id = rate.getAttribute("data-rate") || "";
+      const v = els.chatLog.querySelector(`[data-ratev="${CSS.escape(id)}"]`);
+      if (v) v.textContent = `${Number(rate.value).toFixed(2)}x`;
+      saveSettings(settings);
+    }
+  });
+  els.chatLog.addEventListener("change", (e) => {
+    const t = /** @type {HTMLElement} */ (e.target);
+    const voiceSel = t.closest?.("[data-voice]");
+    if (voiceSel && voiceSel instanceof HTMLSelectElement){
+      settings.voiceUri = voiceSel.value;
+      saveSettings(settings);
     }
   });
 
@@ -951,28 +1011,7 @@ function wireEvents(){
     populateVoiceSelect();
   });
 
-  // Single TTS button: Play / Pause / Resume (reads last assistant answer)
-  els.ttsOneBtn.addEventListener("click", () => {
-    if (!("speechSynthesis" in window)) return;
-    const synth = window.speechSynthesis;
-    if (synth.speaking){
-      if (synth.paused){
-        synth.resume();
-        els.ttsOneBtn.textContent = "Pause";
-      } else {
-        synth.pause();
-        els.ttsOneBtn.textContent = "Resume";
-      }
-      return;
-    }
-    const chat = getActiveChat();
-    const last = [...chat.messages].reverse().find((m) => m.role === "assistant");
-    const text = last?.content || lastSpokenText;
-    if (text){
-      speak(text);
-      els.ttsOneBtn.textContent = "Pause";
-    }
-  });
+  // Per-message TTS controls are rendered inside assistant bubbles.
 
   els.attachBtn.addEventListener("click", () => els.fileInput.click());
   els.fileInput.addEventListener("change", async () => {
