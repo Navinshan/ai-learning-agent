@@ -189,7 +189,21 @@ function ensurePdfJsConfigured(){
       "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/pdf.worker.min.js";
   }
 }
+async function sendMessage(message) {
+  const response = await fetch("YOUR_WEBHOOK_URL", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      message: message,
+      url: "https://example.com"   // ✅ ADD THIS
+    }),
+  });
 
+  const data = await response.json();
+  console.log(data);
+}
 async function extractTextFromFile(file){
   const name = file.name || "uploaded";
   const type = (file.type || "").toLowerCase();
@@ -354,6 +368,7 @@ function renderSidebar(){
     els.chatList.appendChild(item);
   }
 }
+
 
 function renderChat(){
   const chat = getActiveChat();
