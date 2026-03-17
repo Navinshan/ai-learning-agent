@@ -12,7 +12,25 @@
       rel="stylesheet"
     />
     <!-- PDF parsing (client-side) - legacy/UMD build for mobile compatibility -->
-    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/pdf.min.js"></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/pdf.min.js?v=1"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+    <script>
+      // Fallback loader if the CDN is blocked/cached.
+      window.__ensurePdfJs = function () {
+        if (window.pdfjsLib) return;
+        var s = document.createElement("script");
+        s.src = "https://unpkg.com/pdfjs-dist@3.11.174/legacy/build/pdf.min.js";
+        s.crossOrigin = "anonymous";
+        s.referrerPolicy = "no-referrer";
+        document.head.appendChild(s);
+      };
+      window.addEventListener("load", function () {
+        if (!window.pdfjsLib) window.__ensurePdfJs();
+      });
+    </script>
     <!-- DOCX parsing (client-side) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js"></script>
     <!-- PPTX parsing helper (client-side) -->
