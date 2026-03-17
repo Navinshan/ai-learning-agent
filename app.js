@@ -175,14 +175,14 @@ function ensurePdfJsConfigured(){
   if (!("pdfjsLib" in window)){
     throw new Error(
       "PDF support is unavailable because PDF.js didn’t load (pdfjsLib is not defined). " +
-      "Fix: make sure this script loads: https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.6.82/pdf.min.js " +
+      "Fix: make sure this script loads: https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/pdf.min.js " +
       "and that your browser is not blocking third-party scripts."
     );
   }
   if (!pdfjsLib.GlobalWorkerOptions.workerSrc){
     // CDN worker
     pdfjsLib.GlobalWorkerOptions.workerSrc =
-      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.6.82/pdf.worker.min.js";
+      "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/pdf.worker.min.js";
   }
 }
 
