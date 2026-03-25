@@ -4,10 +4,10 @@ function SuggestCard({ title, desc, onClick }) {
   return (
     <button
       onClick={onClick}
-      className="group text-left rounded-2xl border border-white/10 bg-white/5 hover:bg-white/8 transition p-5 shadow-[0_10px_30px_rgba(0,0,0,0.35)]"
+      className="group text-left rounded-2xl border border-white/10 bg-white/5 hover:bg-white/8 hover:scale-105 transition-all duration-300 p-5 shadow-[0_10px_30px_rgba(0,0,0,0.35)] hover:shadow-[0_0_50px_rgba(255,255,255,0.1)]"
     >
-      <div className="text-base font-semibold text-white">{title}</div>
-      <div className="mt-2 text-sm text-white/70">{desc}</div>
+      <div className="text-base font-semibold text-white group-hover:text-white transition">{title}</div>
+      <div className="mt-2 text-sm text-white/70 group-hover:text-white/80 transition">{desc}</div>
       <div className="mt-4 text-xs text-white/50 group-hover:text-white/70 transition">
         Click to start →
       </div>
@@ -17,6 +17,7 @@ function SuggestCard({ title, desc, onClick }) {
 
 function LandingApp() {
   const [query, setQuery] = useState("");
+  const [settings, setSettings] = useState(() => ALA.loadSettings());
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -62,7 +63,16 @@ function LandingApp() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-5 py-16">
+    <div className="min-h-screen flex items-center justify-center px-5 py-16 relative">
+      <button
+        onClick={() => {
+          const newTheme = ALA.toggleTheme();
+          setSettings((s) => ({ ...s, theme: newTheme }));
+        }}
+        className="absolute top-4 right-4 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 px-3 py-2 text-sm text-white/70 transition"
+      >
+        {settings.theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
+      </button>
       <div className="w-full max-w-4xl">
         <div className="text-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs text-white/70">
@@ -82,7 +92,7 @@ function LandingApp() {
 
         <form onSubmit={onSubmit} className="mt-10 flex justify-center">
           <div className="w-full max-w-2xl">
-            <div className="rounded-full bg-white text-black shadow-[0_18px_60px_rgba(0,0,0,0.55)] border border-white/30 focus-within:border-white/60 focus-within:shadow-[0_0_0_6px_rgba(99,102,241,0.18),0_18px_60px_rgba(0,0,0,0.55)] transition px-4 py-2 flex items-center gap-3">
+            <div className="rounded-full bg-white text-black shadow-[0_18px_60px_rgba(0,0,0,0.55)] border border-white/30 focus-within:border-white/60 focus-within:shadow-[0_0_0_6px_rgba(99,102,241,0.18),0_18px_60px_rgba(0,0,0,0.55)] hover:shadow-[0_0_0_10px_rgba(99,102,241,0.1),0_18px_60px_rgba(0,0,0,0.55)] transition-all duration-300 px-4 py-2 flex items-center gap-3">
               <input
                 ref={inputRef}
                 value={query}
@@ -97,7 +107,7 @@ function LandingApp() {
               />
               <button
                 type="submit"
-                className="shrink-0 rounded-full bg-black/90 text-white px-4 py-2 text-sm font-semibold hover:bg-black transition"
+                className="shrink-0 rounded-full bg-black/90 text-white px-4 py-2 text-sm font-semibold hover:bg-black hover:scale-105 transition-all duration-300"
               >
                 Start →
               </button>

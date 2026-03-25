@@ -39,13 +39,22 @@
     const raw = localStorage.getItem(LS.settings);
     const s = raw ? safeJsonParse(raw, {}) : {};
     return {
-      webhookUrl: typeof s.webhookUrl === "string" ? s.webhookUrl : "",
       explainSimply: !!s.explainSimply,
+      theme: s.theme || 'dark',
     };
   }
 
   function saveSettings(settings) {
     localStorage.setItem(LS.settings, JSON.stringify(settings));
+  }
+
+  function toggleTheme() {
+    const current = loadSettings().theme;
+    const newTheme = current === 'dark' ? 'light' : 'dark';
+    const newSettings = { ...loadSettings(), theme: newTheme };
+    saveSettings(newSettings);
+    document.body.setAttribute('data-theme', newTheme);
+    return newTheme;
   }
 
   function loadChats() {
@@ -99,6 +108,7 @@
     getQueryParam,
     loadSettings,
     saveSettings,
+    toggleTheme,
     loadChats,
     saveChats,
     getActiveChatId,

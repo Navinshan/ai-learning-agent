@@ -22,7 +22,7 @@
       };
     </script>
   </head>
-  <body class="min-h-screen bg-[#0b0f17] text-white font-sans">
+  <body class="min-h-screen text-white font-sans">
     <div id="root"></div>
 
     <!-- React (CDN) -->
@@ -37,6 +37,11 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
     <script src="./shared.js"></script>
+    <script>
+      // Set initial theme
+      const settings = ALA.loadSettings();
+      document.body.setAttribute('data-theme', settings.theme);
+    </script>
     <script type="text/babel" src="./chat.jsx"></script>
   </body>
 </html>

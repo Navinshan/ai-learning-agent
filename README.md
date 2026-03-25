@@ -1,21 +1,27 @@
-# AI Learning Agent (2-page React + Tailwind)
+# AI Learning Agent (2-page React + Tailwind + Python Backend)
 
-Static GitHub Pages–friendly app (no Node build required) with:
+Static GitHub Pages–friendly app with Python Flask backend for AI chat functionality.
 
 - **Landing page** (`index.html`)
-- **Chat page** (`chat.html`) — ChatGPT-style UI
-- **n8n webhook** backend integration (`POST { "query": "..." }`)
+- **Chat page** (`chat.html`) — ChatGPT-style UI with Python backend
+- **Flask backend** (`app.py`) — Handles chat requests
 - Optional file upload (PDF/DOCX/PPTX/TXT) to include document text in requests
 
-## Run
+## Run Locally
 
-Because browsers block some file features when opening `index.html` directly, run a tiny local server:
+Install dependencies:
 
 ```bash
-python serve.py
+pip install -r requirements.txt
 ```
 
-Then open the printed URL (usually `http://127.0.0.1:5173/`).
+Run the Flask app:
+
+```bash
+python app.py
+```
+
+Open the printed URL (usually `http://127.0.0.1:5000/`).
 
 ## Supported uploads
 
@@ -24,28 +30,42 @@ Then open the printed URL (usually `http://127.0.0.1:5173/`).
 - `.docx` (via `mammoth`)
 - `.pptx` (via `jszip` + slide XML text extraction)
 
-## Backend (n8n)
+## Backend
 
-On the chat page, click **Set webhook URL** (left sidebar) and paste your n8n webhook URL.
+The Flask app (`app.py`) serves the static files and provides a `/api/chat` endpoint.
 
-Expected format:
+Expected request: `{ "query": "user message" }` (optional: `{ "file": { "name": "...", "text": "..." } }`)
 
-- Request: `{ "query": "user message" }`
-- Response: `{ "response": "AI answer" }`
+Response: `{ "response": "AI answer" }`
+
+Currently, it returns a placeholder response. Integrate with your preferred AI API (e.g., OpenAI, Anthropic) in the `/api/chat` route.
 
 ## Share as a link (any device)
 
-This is a static site. You can host it anywhere.
+This app can be hosted on any platform that supports Python/Flask.
 
-### Option A: Netlify (fastest)
+### Option A: Heroku (recommended for Python apps)
 
-1. Create a free Netlify account
-2. Drag-and-drop the `D:\HACKMATRIX` folder into Netlify “Deploy”
-3. Share the public Netlify URL
+1. Create a free Heroku account
+2. Install Heroku CLI
+3. In the project directory:
+   ```bash
+   heroku create your-app-name
+   git push heroku master
+   ```
+4. Share the Heroku URL
 
-### Option B: GitHub Pages
+### Option B: Render
 
-1. Create a GitHub repo and upload these files: `index.html`, `chat.html`, `landing.jsx`, `chat.jsx`, `shared.js`, `serve.py`, `README.md`, `.nojekyll`
-2. In GitHub: Settings → Pages → deploy from branch
-3. Share the Pages URL
+1. Create a free Render account
+2. Connect your GitHub repo
+3. Deploy as a Web Service (Python)
+4. Share the Render URL
+
+### Option C: Railway
+
+1. Create a free Railway account
+2. Connect your GitHub repo
+3. Deploy automatically
+4. Share the Railway URL
 

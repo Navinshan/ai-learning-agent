@@ -56,7 +56,7 @@ function MessageBubble({ role, content, ts, onCopy, onSpeak }) {
     <div className={cx("flex", isUser ? "justify-end" : "justify-start")}>
       <div
         className={cx(
-          "max-w-[92%] md:max-w-[70%] rounded-2xl px-4 py-3 border shadow-[0_10px_30px_rgba(0,0,0,0.35)]",
+          "max-w-[92%] md:max-w-[70%] rounded-2xl px-4 py-3 border shadow-[0_10px_30px_rgba(0,0,0,0.35)] hover:shadow-[0_0_40px_rgba(255,255,255,0.1)] transition-all duration-300",
           isUser
             ? "bg-emerald-400/10 border-emerald-400/30"
             : "bg-white/5 border-white/10"
@@ -72,13 +72,13 @@ function MessageBubble({ role, content, ts, onCopy, onSpeak }) {
           <div className="mt-3 flex items-center gap-2">
             <button
               onClick={onCopy}
-              className="rounded-full border border-white/10 bg-white/5 hover:bg-white/10 px-3 py-1 text-xs text-white/80 transition"
+              className="rounded-full border border-white/10 bg-white/5 hover:bg-white/10 hover:scale-105 px-3 py-1 text-xs text-white/80 transition-all duration-300"
             >
               Copy
             </button>
             <button
               onClick={onSpeak}
-              className="rounded-full border border-white/10 bg-white/5 hover:bg-white/10 px-3 py-1 text-xs text-white/80 transition"
+              className="rounded-full border border-white/10 bg-white/5 hover:bg-white/10 hover:scale-105 px-3 py-1 text-xs text-white/80 transition-all duration-300"
             >
               Read
             </button>
@@ -89,7 +89,6 @@ function MessageBubble({ role, content, ts, onCopy, onSpeak }) {
   );
 }
 
-function ChatApp() {
   const [settings, setSettings] = useState(() => ALA.loadSettings());
   const [chats, setChats] = useState(() => ALA.loadChats());
   const [activeChatId, setActiveChatId] = useState(() => ALA.getActiveChatId());
@@ -156,14 +155,6 @@ function ChatApp() {
     setChats((prev) =>
       prev.map((c) => (c.id === activeChat.id ? updater({ ...c }) : c))
     );
-  };
-
-  const ensureWebhook = async () => {
-    if (settings.webhookUrl) return settings.webhookUrl;
-    const url = prompt("Paste your n8n webhook URL:");
-    if (!url) throw new Error("Webhook URL is required.");
-    setSettings((s) => ({ ...s, webhookUrl: url }));
-    return url;
   };
 
   const extractTextFromFile = async (file) => {
@@ -258,7 +249,6 @@ function ChatApp() {
     });
 
     try {
-      const url = await ensureWebhook();
       const payload = {
         query: settings.explainSimply ? `Explain simply: ${q}` : q,
       };
@@ -266,7 +256,7 @@ function ChatApp() {
       if (fileText) {
         payload.file = { name: fileName, text: fileText.slice(0, 200000) };
       }
-      const body = await ALA.postWebhook(url, payload);
+      const body = await ALA.postWebhook('/api/chat', payload);
       const resp = ALA.coerceResponse(body);
 
       updateActiveChat((c) => {
@@ -360,15 +350,6 @@ function ChatApp() {
               onChange={(e) => setSettings((s) => ({ ...s, explainSimply: e.target.checked }))}
             />
           </label>
-          <button
-            onClick={() => {
-              const url = prompt("Set n8n webhook URL:", settings.webhookUrl || "");
-              if (url != null) setSettings((s) => ({ ...s, webhookUrl: url.trim() }));
-            }}
-            className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-left hover:bg-white/8 transition"
-          >
-            Set webhook URL
-          </button>
         </div>
       </aside>
 
@@ -378,6 +359,15 @@ function ChatApp() {
         <header className="h-14 border-b border-white/10 bg-white/5 flex items-center px-4 gap-3">
           <div className="font-semibold truncate">{activeChat.title || "New chat"}</div>
           <div className="ml-auto flex items-center gap-2">
+            <button
+              onClick={() => {
+                const newTheme = ALA.toggleTheme();
+                setSettings((s) => ({ ...s, theme: newTheme }));
+              }}
+              className="rounded-full border border-white/10 bg-white/5 hover:bg-white/10 px-3 py-1 text-xs text-white/70 transition"
+            >
+              {settings.theme === 'dark' ? '☀️ Light' : '🌙 Dark'}
+            </button>
             <button
               onClick={() => {
                 updateActiveChat((c) => ({ ...c, messages: [] }));
@@ -393,7 +383,7 @@ function ChatApp() {
         <section ref={logRef} className="flex-1 overflow-auto px-4 py-5 space-y-4">
           {activeChat.messages.length === 0 ? (
             <div className="max-w-2xl mx-auto rounded-2xl border border-white/10 bg-white/5 p-5 text-white/80">
-              Upload a file (optional), then ask anything. This chat sends your message to your n8n webhook.
+              Upload a file (optional), then ask anything. Start chatting with the AI assistant.
             </div>
           ) : (
             activeChat.messages.map((m) => (
