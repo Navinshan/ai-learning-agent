@@ -1,42 +1,321 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI Learning Agent</title>
-    <meta name="description" content="AI learning assistant landing page" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            fontFamily: { sans: ["Inter", "system-ui", "sans-serif"] },
-          },
-        },
-      };
-    </script>
-  </head>
-  <body class="min-h-screen text-white font-sans">
-    <div id="root"></div>
+'use strict';
 
-    <!-- React (CDN) -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <!-- Babel for JSX (no Node build required) -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+let currentMode = 'both';
+let currentSessionId = null;
+let docText = null;
+let docName = null;
+let isLoading = false;
+let historyOpen = true;
+let allSessions = [];
 
-    <script src="./shared.js"></script>
-    <script>
-      // Set initial theme
-      const settings = ALA.loadSettings();
-      document.body.setAttribute('data-theme', settings.theme);
-    </script>
-    <script type="text/babel" src="./landing.jsx"></script>
-  </body>
-</html>
+// ── Init ──
+document.addEventListener('DOMContentLoaded', () => {
+  loadSessions();
+});
+
+// ── Sessions ──
+async function loadSessions() {
+  try {
+    const res = await fetch('/api/sessions');
+    allSessions = await res.json();
+    renderSessions(allSessions);
+  } catch (e) {
+    document.getElementById('sessionList').innerHTML =
+      '<div class="loading-sessions">Could not load sessions.</div>';
+  }
+}
+
+function renderSessions(list) {
+  const el = document.getElementById('sessionList');
+  if (!list.length) {
+    el.innerHTML = '<div class="loading-sessions">No sessions yet.</div>';
+    return;
+  }
+  el.innerHTML = list.map(s => {
+    const tagClass = s.doc_name ? (s.doc_name.endsWith('.pdf') ? 'tag-pdf' : 'tag-txt') : 'tag-chat';
+    const tagLabel = s.doc_name ? (s.doc_name.endsWith('.pdf') ? '📄 PDF' : '📝 TXT') : '💬 Chat';
+    const date = new Date(s.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return `<div class="session-card ${s.id === currentSessionId ? 'active' : ''}" onclick="selectSession('${s.id}')">
+      <div class="session-card-head">
+        <span class="session-tag ${tagClass}">${tagLabel}</span>
+        <button class="delete-session" onclick="deleteSession(event,'${s.id}')" title="Delete">✕</button>
+      </div>
+      <div class="session-name">${escHtml(s.title)}</div>
+      <div class="session-meta">${date}</div>
+    </div>`;
+  }).join('');
+}
+
+function filterSessions(q) {
+  const filtered = allSessions.filter(s => s.title.toLowerCase().includes(q.toLowerCase()));
+  renderSessions(filtered);
+}
+
+async function createSession() {
+  try {
+    const res = await fetch('/api/sessions', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: 'New Session' })
+    });
+    const s = await res.json();
+    allSessions.unshift(s);
+    renderSessions(allSessions);
+    selectSession(s.id, s);
+  } catch (e) { showToast('Could not create session'); }
+}
+
+async function selectSession(id, data) {
+  currentSessionId = id;
+  docText = null; docName = null;
+  clearFile();
+  const s = data || allSessions.find(x => x.id === id);
+  if (s) {
+    document.getElementById('chatTitle').textContent = s.title;
+    document.getElementById('chatSub').textContent = s.doc_name ? `📎 ${s.doc_name}` : 'Chat session';
+    if (s.doc_text) { docText = s.doc_text; docName = s.doc_name; showFilePreview(s.doc_name, null); }
+  }
+  renderSessions(allSessions.map(x => ({ ...x, _active: x.id === id })));
+  // reload messages
+  document.getElementById('messages').innerHTML = '';
+  document.getElementById('welcome').style.display = 'none';
+  document.getElementById('messages').style.display = 'flex';
+  try {
+    const res = await fetch(`/api/sessions/${id}/messages`);
+    const msgs = await res.json();
+    if (!msgs.length) {
+      document.getElementById('welcome').style.display = 'flex';
+      document.getElementById('messages').style.display = 'none';
+    } else {
+      msgs.forEach(m => appendBubble(m.role, m.content, false));
+    }
+  } catch (e) { /* ignore */ }
+}
+
+async function deleteSession(e, id) {
+  e.stopPropagation();
+  await fetch(`/api/sessions/${id}`, { method: 'DELETE' });
+  allSessions = allSessions.filter(s => s.id !== id);
+  if (currentSessionId === id) {
+    currentSessionId = null;
+    document.getElementById('chatTitle').textContent = 'Exam Prep AI';
+    document.getElementById('chatSub').textContent = 'Select or create a session to begin';
+    document.getElementById('welcome').style.display = 'flex';
+    document.getElementById('messages').style.display = 'none';
+    document.getElementById('messages').innerHTML = '';
+  }
+  renderSessions(allSessions);
+}
+
+// ── Mode ──
+function setMode(mode, el) {
+  currentMode = mode;
+  document.querySelectorAll('.mode-pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ── History toggle ──
+function toggleHistory() {
+  historyOpen = !historyOpen;
+  document.getElementById('history').classList.toggle('collapsed', !historyOpen);
+  document.getElementById('expandBtn').style.display = historyOpen ? 'none' : 'flex';
+}
+
+// ── Theme ──
+function toggleTheme() {
+  const body = document.body;
+  const isDark = body.getAttribute('data-theme') === 'dark';
+  body.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  document.querySelector('.theme-toggle').textContent = isDark ? '🌙' : '☀️';
+}
+
+// ── File upload ──
+async function handleFileUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const form = new FormData();
+  form.append('file', file);
+  try {
+    const res = await fetch('/api/upload', { method: 'POST', body: form });
+    const data = await res.json();
+    if (data.error) { showToast(data.error); return; }
+    docText = data.text;
+    docName = data.filename;
+    showFilePreview(data.filename, data.word_count);
+    // Update session doc
+    if (currentSessionId) {
+      await fetch('/api/sessions', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ doc_name: docName, doc_text: docText })
+      });
+    }
+  } catch (e) { showToast('Upload failed: ' + e.message); }
+}
+
+function showFilePreview(name, words) {
+  document.getElementById('filePreview').style.display = 'flex';
+  document.getElementById('fileName').textContent = name;
+  document.getElementById('fileWords').textContent = words ? `${words.toLocaleString()} words` : '';
+}
+
+function clearFile() {
+  docText = null; docName = null;
+  document.getElementById('filePreview').style.display = 'none';
+  document.getElementById('fileUp').value = '';
+}
+
+// ── Chat ──
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(120, el.scrollHeight) + 'px';
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+
+function sendChip(text) {
+  if (!currentSessionId) {
+    createSession().then(() => {
+      document.getElementById('msgInput').value = text;
+      sendMessage();
+    });
+    return;
+  }
+  document.getElementById('msgInput').value = text;
+  sendMessage();
+}
+
+async function sendMessage() {
+  if (isLoading) return;
+  const input = document.getElementById('msgInput');
+  const text = input.value.trim();
+  if (!text) return;
+  if (!currentSessionId) { showToast('Please create or select a session first.'); return; }
+
+  input.value = '';
+  input.style.height = 'auto';
+
+  document.getElementById('welcome').style.display = 'none';
+  document.getElementById('messages').style.display = 'flex';
+
+  appendBubble('user', text);
+  showTyping();
+  isLoading = true;
+  document.getElementById('sendBtn').disabled = true;
+
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        session_id: currentSessionId,
+        message: text,
+        mode: currentMode,
+        doc_text: docText
+      })
+    });
+    const data = await res.json();
+    removeTyping();
+    if (data.error) { appendBubble('assistant', '⚠️ ' + data.error); }
+    else { appendBubble('assistant', data.response); }
+    // Update session title if first message
+    const s = allSessions.find(x => x.id === currentSessionId);
+    if (s && s.title === 'New Session') {
+      s.title = text.slice(0, 44);
+      document.getElementById('chatTitle').textContent = s.title;
+      renderSessions(allSessions);
+    }
+  } catch (e) {
+    removeTyping();
+    appendBubble('assistant', '⚠️ Connection error: ' + e.message);
+  } finally {
+    isLoading = false;
+    document.getElementById('sendBtn').disabled = false;
+  }
+}
+
+function appendBubble(role, content, scroll = true) {
+  const msgs = document.getElementById('messages');
+  const row = document.createElement('div');
+  row.className = `msg-row ${role === 'user' ? 'user' : ''}`;
+  const isUser = role === 'user';
+  const actions = !isUser ? `<div class="bubble-actions">
+    <button class="bact" onclick="copyBubble(this)">⧉ Copy</button>
+    <button class="bact" onclick="readBubble(this)">🔊 Read</button>
+  </div>` : '';
+  const src = !isUser && docName
+    ? `<div class="source-badge">✓ Grounded in ${escHtml(docName)}</div>` : '';
+  row.innerHTML = `
+    <div class="avatar ${isUser ? 'user' : 'ai'}">${isUser ? '👤' : '🎓'}</div>
+    <div class="bubble ${isUser ? 'user' : 'ai'}">
+      <div class="bubble-label">${isUser ? 'You' : 'StudyAI'}</div>
+      ${src}
+      <div class="bubble-content">${formatContent(content)}</div>
+      ${actions}
+    </div>`;
+  msgs.appendChild(row);
+  if (scroll) msgs.scrollTop = msgs.scrollHeight;
+}
+
+function showTyping() {
+  const msgs = document.getElementById('messages');
+  const row = document.createElement('div');
+  row.className = 'msg-row typing-row';
+  row.id = 'typing-indicator';
+  row.innerHTML = `<div class="avatar ai">🎓</div>
+    <div class="bubble ai"><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>`;
+  msgs.appendChild(row);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function removeTyping() {
+  const el = document.getElementById('typing-indicator');
+  if (el) el.remove();
+}
+
+function copyBubble(btn) {
+  const text = btn.closest('.bubble').querySelector('.bubble-content').innerText;
+  navigator.clipboard.writeText(text);
+  btn.textContent = '✓ Copied';
+  setTimeout(() => btn.textContent = '⧉ Copy', 1500);
+}
+
+function readBubble(btn) {
+  if (!('speechSynthesis' in window)) return;
+  const text = btn.closest('.bubble').querySelector('.bubble-content').innerText;
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+}
+
+// ── Voice input ──
+function startVoice() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { showToast('Voice input not supported in this browser.'); return; }
+  const rec = new SR(); rec.lang = 'en-US'; rec.interimResults = false;
+  rec.onresult = e => { document.getElementById('msgInput').value = e.results[0][0].transcript; };
+  rec.start();
+  const btn = document.getElementById('micBtn');
+  btn.textContent = '🔴';
+  rec.onend = () => btn.textContent = '🎙️';
+}
+
+// ── Utilities ──
+function escHtml(s) {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c]));
+}
+
+function formatContent(text) {
+  return escHtml(text)
+    .replace(/```[\w]*\n?([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^(\d+\.) /gm, '<br><strong>$1</strong> ')
+    .replace(/\n/g, '<br>');
+}
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 4000);
+}
